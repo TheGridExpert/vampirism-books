@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="vampire-theme" content="light">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vampirism Lore Books</title>
+  <style>
+    :root {
+      /* Light theme */
+      --bg: #fdf6ff;
+      --text: #4b2e83;
+      --text-light: #6a519e;
+      --border: #d9c2e5;
+      --accent: #9d7cb2;
+      --panel-bg: #f8f0ff;
+      --switch-bg: #e0d0f0;
+    }
+    /* Dark theme */
+    [data-theme="dark"] {
+      /* Dark theme */
+      --bg: #0f0b15;
+      --text: #d6c2f0;
+      --text-light: #b088e0;
+      --border: #4a3a6b;
+      --accent: #7a5ca8;
+      --panel-bg: #1a1525;
+      --switch-bg: #3a2f55;
+    }
+    * {
+      box-sizing: border-box;
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .theme-toggle {
+      background: var(--switch-bg);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #language-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #language-selector label {
+      font-weight: bold;
+      color: var(--text-light);
+    }
+    #language-selector select {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel-bg);
+      color: var(--text);
+      font-size: 15px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+    .book-container {
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel-bg);
+      overflow: hidden;
+    }
+    .book-title {
+      padding: 14px 18px;
+      font-size: 1.25em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .book-title::after {
+      content: "▼";
+      font-size: 0.8em;
+      color: var(--text-light);
+      transition: transform 0.25s;
+    }
+    .book-title.collapsed::after {
+      transform: rotate(180deg);
+    }
+    .book-content {
+      padding: 0 18px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    .book-content.expanded {
+      padding: 18px;
+      max-height: none;
+    }
+    .book-content > .no-translation {
+      font-style: italic;
+      color: var(--text-light);
+      margin: 8px 0;
+    }
+    .page {
+      white-space: pre-wrap;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .page:last-child {
+      margin-bottom: 0;
+    }
+    .page span {
+      white-space: pre-wrap;
+    }
+    .page-divider {
+      height: 1px;
+      background-color: var(--border);
+      margin: 16px 0;
+      border: none;
+    }
+    .credit {
+      font-style: italic;
+      color: var(--text-light);
+      margin-top: 10px;
+      border-top: 1px dashed var(--border);
+      padding-top: 8px;
+    }
+    .loading,
+    .error {
+      text-align: center;
+      padding: 16px;
+      color: var(--text-light);
+    }
+    .error {
+      color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="page-title">Vampirism Lore Books</h1>
+  <div class="controls">
+    <div id="language-selector">
+      <label id="lang-label" for="lang-select">Language:</label>
+      <select id="lang-select">
+        <option value="en_us">English</option>
+        <option value="ru_ru">Русский</option>
+        <option value="uk_ua">Українська</option>
+      </select>
+    </div>
+    <button class="theme-toggle" id="theme-toggle">🌙 Dark Mode</button>
+  </div>
+  <div id="books-container">
+    <div class="loading">Loading books…</div>
+  </div>
+
+  <script>
+    const UI_TEXT = {
+      en_us: {
+        title: "Vampirism Lore Books",
+        langLabel: "Language:",
+        noTranslation: (langName) => `No translation available. Showing English.`,
+        darkMode: "☾ Dark Mode",
+        lightMode: "☀ Light Mode"
+      },
+      ru_ru: {
+        title: "Книги лора Вампиризма",
+        langLabel: "Язык:",
+        noTranslation: (langName) => `Перевод недоступен. Показано на английском.`,
+        darkMode: "☾ Тёмный режим",
+        lightMode: "☀ Светлый режим"
+      },
+      uk_ua: {
+        title: "Книги лору Вампірізма",
+        langLabel: "Мова:",
+        noTranslation: (langName) => `Переклад недоступний. Показано англійською.`,
+        darkMode: "☾ Темний режим",
+        lightMode: "☀ Світлий режим"
+      }
+    };
+    const LANG_NAMES = {
+      en_us: "English",
+      ru_ru: "Русский",
+      uk_ua: "Українська"
+    };
+
+    function normalizeNewlines(text) {
+      if (typeof text !== 'string') return text;
+      let result = text.trim();
+      result = result.replace(/\n{4,}/g, '\n\n\n');
+      return result;
+    }
+
+    function parseMinecraftText(raw) {
+      if (!raw || !raw.includes('§')) {
+        return document.createTextNode(raw || '');
+      }
+      const container = document.createDocumentFragment();
+      let currentStyle = {};
+      let buffer = '';
+      let i = 0;
+      const flush = () => {
+        if (buffer) {
+          const span = document.createElement('span');
+          span.textContent = buffer;
+          if (currentStyle.bold) span.style.fontWeight = 'bold';
+          if (currentStyle.italic) span.style.fontStyle = 'italic';
+          let deco = '';
+          if (currentStyle.underline) deco += ' underline';
+          if (currentStyle.strikethrough) deco += ' line-through';
+          if (deco) span.style.textDecoration = deco.trim();
+          container.appendChild(span);
+          buffer = '';
+        }
+      };
+      while (i < raw.length) {
+        if (raw[i] === '§' && i + 1 < raw.length) {
+          flush();
+          const code = raw[i + 1];
+          i += 2;
+          if (code === 'r') {
+            currentStyle = {};
+          } else if (code === 'l') {
+            currentStyle.bold = true;
+          } else if (code === 'o') {
+            currentStyle.italic = true;
+          } else if (code === 'n') {
+            currentStyle.underline = true;
+          } else if (code === 'm') {
+            currentStyle.strikethrough = true;
+          }
+        } else {
+          buffer += raw[i];
+          i++;
+        }
+      }
+      flush();
+      return container;
+    }
+
+    // The book list is hardcoded to avoid github request overload
+    const KNOWN_BOOK_IDS = [
+      "ashes_of_past_dawns",
+      "case_file_144",
+      "case_study_one",
+      "century_of_evolution",
+      "dear_martha",
+      "hunters_diary",
+      "infusion_breakthrough",
+      "mad_mans_journal",
+      "maids_diary",
+      "my_mother",
+      "my_prince",
+      "nocturnal",
+      "observation_on_vampires",
+      "pyromaniacs_diary",
+      "royal_rivalry",
+      "sinister_intentions",
+      "valorous_tale",
+      "wanted"
+    ];
+
+    const RAW_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/src/main/resources/assets/vampirism';
+    let allBooksData = {};
+    let langTitles = {};
+
+    const themeToggle = document.getElementById('theme-toggle');
+    let currentTheme = localStorage.getItem('vampire-theme') === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    themeToggle.textContent = currentTheme === 'dark' ? UI_TEXT.en_us.lightMode : UI_TEXT.en_us.darkMode;
+
+    themeToggle.addEventListener('click', () => {
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      const lang = document.getElementById('lang-select').value;
+      updateUIText(lang);
+      localStorage.setItem('vampire-theme', currentTheme);
+    });
+
+    async function loadLanguageFiles() {
+      const langCodes = ['en_us', 'ru_ru', 'uk_ua'];
+      for (const lang of langCodes) {
+        try {
+          const url = `${RAW_BASE}/lang/${lang}.json`;
+          const response = await fetch(url);
+          if (response.ok) {
+            langTitles[lang] = await response.json();
+          }
+        } catch (e) {
+          console.warn(`Failed to load ${lang} language file`);
+        }
+      }
+    }
+
+    async function loadBooks() {
+      const container = document.getElementById('books-container');
+      container.innerHTML = '';
+
+      for (const bookId of KNOWN_BOOK_IDS) {
+        allBooksData[bookId] = {};
+        const langCodes = ['en_us', 'ru_ru', 'uk_ua'];
+        for (const lang of langCodes) {
+          try {
+            const url = `${RAW_BASE}/vampire_books/${bookId}/${lang}.json`;
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            let rawData = await response.json();
+
+            const data = { ...rawData };
+            if (Array.isArray(data.contents)) {
+              data.contents = data.contents.map(page => normalizeNewlines(page));
+            }
+            if (typeof data.credit === 'string') {
+              data.credit = normalizeNewlines(data.credit);
+            }
+
+            allBooksData[bookId][lang] = data;
+          } catch (e) {}
+        }
+      }
+
+      renderBooks();
+    }
+
+    function getBookTitle(bookId, lang) {
+      const key = `vampire_book.vampirism.${bookId}`;
+      if (langTitles[lang]?.[key]) return langTitles[lang][key];
+      if (langTitles.en_us?.[key]) return langTitles.en_us[key];
+      return bookId.replace(/_/g, ' ');
+    }
+
+    function updateUIText(lang) {
+      const ui = UI_TEXT[lang] || UI_TEXT.en_us;
+      document.getElementById('page-title').textContent = ui.title;
+      document.getElementById('lang-label').textContent = ui.langLabel;
+      themeToggle.textContent = currentTheme === 'dark' ? ui.lightMode : ui.darkMode;
+    }
+
+    function renderBooks() {
+      const container = document.getElementById('books-container');
+      container.innerHTML = '';
+
+      const bookIds = KNOWN_BOOK_IDS;
+      bookIds.forEach(id => {
+        const div = document.createElement('div');
+        div.className = 'book-container';
+        div.dataset.bookId = id;
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'book-title';
+        titleDiv.textContent = getBookTitle(id, 'en_us');
+        titleDiv.addEventListener('click', () => {
+          titleDiv.classList.toggle('collapsed');
+          contentDiv.classList.toggle('expanded');
+        });
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'book-content';
+
+        div.appendChild(titleDiv);
+        div.appendChild(contentDiv);
+        container.appendChild(div);
+      });
+
+      updateBookContents();
+    }
+
+    function updateBookContents() {
+      const lang = document.getElementById('lang-select').value;
+      updateUIText(lang);
+
+      document.querySelectorAll('.book-container').forEach(container => {
+        const bookId = container.dataset.bookId;
+        const titleDiv = container.querySelector('.book-title');
+        titleDiv.textContent = getBookTitle(bookId, lang);
+
+        const contentDiv = container.querySelector('.book-content');
+        contentDiv.innerHTML = '';
+
+        const book = allBooksData[bookId];
+        if (!book) return;
+
+        let dataToShow = book[lang] || book.en_us;
+        let note = !book[lang] && book.en_us ? UI_TEXT[lang]?.noTranslation(LANG_NAMES[lang]) : '';
+
+        if (!dataToShow) {
+          contentDiv.innerHTML = '<div class="error">No content.</div>';
+          return;
+        }
+
+        if (note) {
+          const noteEl = document.createElement('div');
+          noteEl.className = 'no-translation';
+          noteEl.textContent = note;
+          contentDiv.appendChild(noteEl);
+        }
+
+        if (Array.isArray(dataToShow.contents)) {
+          const pages = dataToShow.contents;
+          pages.forEach((text, index) => {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'page';
+            pageDiv.appendChild(parseMinecraftText(text));
+            contentDiv.appendChild(pageDiv);
+
+            if (index < pages.length - 1) {
+              const divider = document.createElement('div');
+              divider.className = 'page-divider';
+              contentDiv.appendChild(divider);
+            }
+          });
+        }
+
+        if (dataToShow.credit) {
+          const credit = document.createElement('div');
+          credit.className = 'credit';
+          credit.textContent = `— ${dataToShow.credit}`;
+          contentDiv.appendChild(credit);
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadLanguageFiles();
+      await loadBooks();
+      document.getElementById('lang-select').addEventListener('change', () => {
+        updateBookContents();
+      });
+    });
+  </script>
+</body>
+</html>
