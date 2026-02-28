@@ -181,39 +181,9 @@
 
   <div style="display:none;">
     <p>For a plain-text version of all lore books, see <a href="books-full.html">books-full.html</a>.</p>
-    <h2>List of available Vampirism Lore Books</h2>
-    <ul>
-      <li>Ashes of Past Dawns</li>
-      <li>Case File #144</li>
-      <li>Case Study I</li>
-      <li>Insights to the History: The Century of Evolution</li>
-      <li>Dear Martha</li>
-      <li>Hunter's Diary</li>
-      <li>Blood Infusion Breakthrough</li>
-      <li>Journal of a Mad Man</li>
-      <li>A Maid's Diary</li>
-      <li>My Mother</li>
-      <li>My Prince</li>
-      <li>Nocturnal</li>
-      <li>Observation on Vampires</li>
-      <li>Pyromaniac's Diary</li>
-      <li>Royal Rivalry</li>
-      <li>Sinister Intentions</li>
-      <li>A Valorous Tale</li>
-      <li>WANTED</li>
-    </ul>
   </div>
 
   <script>
-    const KNOWN_BOOK_IDS = [
-      "ashes_of_past_dawns", "case_file_144", "case_study_one",
-      "century_of_evolution", "dear_martha", "hunters_diary",
-      "infusion_breakthrough", "mad_mans_journal", "maids_diary",
-      "my_mother", "my_prince", "nocturnal", "observation_on_vampires",
-      "pyromaniacs_diary", "royal_rivalry", "sinister_intentions",
-      "valorous_tale", "wanted"
-    ];
-
     const UI_TEXT = {
       en_us: {
         title: "Vampirism Lore Books",
@@ -243,6 +213,7 @@
 
     const LANG_NAMES = { en_us: "English", ru_ru: "Русский", uk_ua: "Українська" };
 
+    let bookIds = [];
     let allBooksData = {};
     let langTitles = {};
     let bookAuthors = {};
@@ -264,6 +235,8 @@
         const res = await fetch('books.json');
         if (!res.ok) throw new Error('books.json not found');
         const data = await res.json();
+
+        bookIds = Object.keys(data.books || {});
 
         langTitles = data.langTitles || {};
 
@@ -297,16 +270,34 @@
 
     const RAW_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/main/resources/assets/vampirism';
     const AUTHOR_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/generated/resources/data/vampirism/vampirism/vampire_book';
+    const BOOKS_DIR_API = 'https://api.github.com/repos/TeamLapen/Vampirism/contents/projects/vampirism/src/main/resources/assets/vampirism/vampire_books?ref=dev';
 
     async function loadAllDataLive() {
       const langs = ['en_us', 'ru_ru', 'uk_ua'];
+
+      try {
+        const r = await fetch(BOOKS_DIR_API);
+        if (r.ok) {
+          const entries = await r.json();
+          bookIds = entries.filter(e => e.type === 'dir').map(e => e.name);
+        }
+      } catch (e) {
+        console.warn('Could not discover books from GitHub API:', e.message);
+      }
+
       for (const lang of langs) {
         try {
           const r = await fetch(`${RAW_BASE}/lang/${lang}.json`);
-          if (r.ok) langTitles[lang] = await r.json();
+          if (r.ok) {
+            const full = await r.json();
+            langTitles[lang] = Object.fromEntries(
+              Object.entries(full).filter(([k]) => k.startsWith('vampire_book.'))
+            );
+          }
         } catch (e) {}
       }
-      for (const bookId of KNOWN_BOOK_IDS) {
+
+      for (const bookId of bookIds) {
         try {
           const r = await fetch(`${AUTHOR_BASE}/${bookId}.json`);
           if (r.ok) {
@@ -392,7 +383,13 @@
     function renderBooks() {
       const container = document.getElementById('books-container');
       container.innerHTML = '';
-      KNOWN_BOOK_IDS.forEach(id => {
+
+      if (bookIds.length === 0) {
+        container.innerHTML = '<div class="error">No books found.</div>';
+        return;
+      }
+
+      bookIds.forEach(id => {
         const div = document.createElement('div');
         div.className = 'book-container';
         div.dataset.bookId = id;
@@ -451,7 +448,9 @@
         if (!book) return;
 
         const dataToShow = book[lang] || book.en_us;
-        const note = !book[lang] && book.en_us ? (UI_TEXT[lang]?.noTranslation(LANG_NAMES[lang]) || '') : '';
+        const note = !book[lang] && book.en_us
+          ? (UI_TEXT[lang]?.noTranslation(LANG_NAMES[lang]) || '')
+          : '';
 
         if (!dataToShow) {
           contentDiv.innerHTML = '<div class="error">No content.</div>';

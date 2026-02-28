@@ -1,38 +1,27 @@
 const fs = require('fs');
 const path = require('path');
 
-const KNOWN_BOOK_IDS = [
-  "ashes_of_past_dawns",
-  "case_file_144",
-  "case_study_one",
-  "century_of_evolution",
-  "dear_martha",
-  "hunters_diary",
-  "infusion_breakthrough",
-  "mad_mans_journal",
-  "maids_diary",
-  "my_mother",
-  "my_prince",
-  "nocturnal",
-  "observation_on_vampires",
-  "pyromaniacs_diary",
-  "royal_rivalry",
-  "sinister_intentions",
-  "valorous_tale",
-  "wanted"
-];
-
 const LANGS = ['en_us', 'ru_ru', 'uk_ua'];
 
+const API_BASE = 'https://api.github.com/repos/TeamLapen/Vampirism/contents';
 const RAW_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/main/resources/assets/vampirism';
 const AUTHOR_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/generated/resources/data/vampirism/vampirism/vampire_book';
+const BOOKS_DIR_API = `${API_BASE}/projects/vampirism/src/main/resources/assets/vampirism/vampire_books?ref=dev`;
+
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 async function fetchJSON(url) {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const headers = { 'User-Agent': 'vampirism-books-fetcher' };
+    if (GITHUB_TOKEN) headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.warn(`  HTTP ${res.status} for ${url}`);
+      return null;
+    }
     return await res.json();
   } catch (e) {
+    console.warn(`  Fetch failed for ${url}: ${e.message}`);
     return null;
   }
 }
@@ -40,6 +29,17 @@ async function fetchJSON(url) {
 function stripFormattingCodes(text) {
   if (typeof text !== 'string') return text;
   return text.replace(/§./g, '');
+}
+
+function filterLangTitles(langData) {
+  if (!langData) return {};
+  const filtered = {};
+  for (const [key, value] of Object.entries(langData)) {
+    if (key.startsWith('vampire_book.')) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
 }
 
 function getBookTitle(bookId, langTitles, lang = 'en_us') {
@@ -61,8 +61,25 @@ function resolveAuthor(bookId, bookAuthors, langTitles, lang = 'en_us') {
   return 'Unknown';
 }
 
+async function discoverBookIds() {
+  console.log('🔍 Discovering book IDs from repository...');
+  const entries = await fetchJSON(BOOKS_DIR_API);
+  if (!Array.isArray(entries)) {
+    console.error('❌ Failed to list vampire_books directory. Check GitHub API access.');
+    process.exit(1);
+  }
+  const bookIds = entries
+    .filter(e => e.type === 'dir')
+    .map(e => e.name);
+
+  console.log(`   Found ${bookIds.length} books: ${bookIds.join(', ')}\n`);
+  return bookIds;
+}
+
 async function main() {
   console.log('📚 Fetching Vampirism book data...\n');
+
+  const BOOK_IDS = await discoverBookIds();
 
   const output = {
     generatedAt: new Date().toISOString(),
@@ -74,14 +91,14 @@ async function main() {
   for (const lang of LANGS) {
     const data = await fetchJSON(`${RAW_BASE}/lang/${lang}.json`);
     if (data) {
-      output.langTitles[lang] = data;
-      console.log(`✅ Lang ${lang}`);
+      output.langTitles[lang] = filterLangTitles(data);
+      console.log(`✅ Lang ${lang} (${Object.keys(output.langTitles[lang]).length} book keys)`);
     } else {
       console.warn(`⚠️  Lang ${lang} failed`);
     }
   }
 
-  for (const bookId of KNOWN_BOOK_IDS) {
+  for (const bookId of BOOK_IDS) {
     const authorData = await fetchJSON(`${AUTHOR_BASE}/${bookId}.json`);
     if (authorData?.author) {
       output.bookAuthors[bookId] = authorData.author;
@@ -109,17 +126,17 @@ async function main() {
   );
   console.log('\n✅ Written: public/books.json');
 
-  const html = buildFullHTML(output);
+  const html = buildFullHTML(output, BOOK_IDS);
   fs.writeFileSync(path.join(outDir, 'books-full.html'), html, 'utf8');
   console.log('✅ Written: public/books-full.html');
 }
 
-function buildFullHTML(data) {
+function buildFullHTML(data, bookIds) {
   const { langTitles, bookAuthors, books, generatedAt } = data;
 
   let body = '';
 
-  for (const bookId of KNOWN_BOOK_IDS) {
+  for (const bookId of bookIds) {
     const bookData = books[bookId];
     if (!bookData) continue;
 
@@ -134,7 +151,7 @@ function buildFullHTML(data) {
     body += `  <p><em>by ${escapeHTML(author)}</em></p>\n`;
 
     if (Array.isArray(content.contents)) {
-      content.contents.forEach((page, i) => {
+      content.contents.forEach((page) => {
         const text = stripFormattingCodes(page).trim();
         if (text) {
           body += `  <section class="page">\n`;
@@ -171,7 +188,7 @@ function buildFullHTML(data) {
 </head>
 <body>
   <h1>Vampirism Mod – All Lore Books</h1>
-  <p class="meta">This page contains the full English text of all lore books from the <a href="https://github.com/TeamLapen/Vampirism">Vampirism Minecraft mod</a>. Auto-generated on ${generatedAt}.</p>
+  <p class="meta">Full English text of all lore books from the <a href="https://github.com/TeamLapen/Vampirism">Vampirism Minecraft mod</a>. Auto-generated on ${generatedAt}.</p>
   <p><a href="/">← Back to interactive reader</a></p>
 
 ${body}
