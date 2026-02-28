@@ -1,0 +1,32 @@
+name: Fetch Vampirism Books Daily
+
+on:
+  schedule:
+    - cron: '0 4 * * *'   # Every day at 4:00 UTC
+  workflow_dispatch:
+
+jobs:
+  fetch-books:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch and build books.json + books-full.html
+        run: node scripts/fetch-books.js
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/books.json public/books-full.html
+          git diff --cached --quiet || git commit -m "chore: update books data [skip ci]"
+          git push

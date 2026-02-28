@@ -10,7 +10,6 @@
   <meta name="description" content="Contains an up-to-date collection of vampire books (lore entries) from Vampirism mod for Minecraft. Available in English, Russian, and Ukrainian.">
   <style>
     :root {
-      /* Light theme */
       --bg: #fdf6ff;
       --text: #4b2e83;
       --text-light: #6a519e;
@@ -19,9 +18,7 @@
       --panel-bg: #f8f0ff;
       --switch-bg: #e0d0f0;
     }
-    /* Dark theme */
     [data-theme="dark"] {
-      /* Dark theme */
       --bg: #0f0b15;
       --text: #d6c2f0;
       --text-light: #b088e0;
@@ -181,7 +178,9 @@
   <div id="books-container">
     <div class="loading">Loading books…</div>
   </div>
+
   <div style="display:none;">
+    <p>For a plain-text version of all lore books, see <a href="books-full.html">books-full.html</a>.</p>
     <h2>List of available Vampirism Lore Books</h2>
     <ul>
       <li>Ashes of Past Dawns</li>
@@ -206,11 +205,20 @@
   </div>
 
   <script>
+    const KNOWN_BOOK_IDS = [
+      "ashes_of_past_dawns", "case_file_144", "case_study_one",
+      "century_of_evolution", "dear_martha", "hunters_diary",
+      "infusion_breakthrough", "mad_mans_journal", "maids_diary",
+      "my_mother", "my_prince", "nocturnal", "observation_on_vampires",
+      "pyromaniacs_diary", "royal_rivalry", "sinister_intentions",
+      "valorous_tale", "wanted"
+    ];
+
     const UI_TEXT = {
       en_us: {
         title: "Vampirism Lore Books",
         langLabel: "Language:",
-        noTranslation: (langName) => `No translation available. Showing English.`,
+        noTranslation: () => `No translation available. Showing English.`,
         darkMode: "☾ Dark Mode",
         lightMode: "☀ Light Mode",
         byAuthor: "by: "
@@ -218,7 +226,7 @@
       ru_ru: {
         title: "Книги лора Вампиризма",
         langLabel: "Язык:",
-        noTranslation: (langName) => `Перевод недоступен. Показано на английском.`,
+        noTranslation: () => `Перевод недоступен. Показано на английском.`,
         darkMode: "☾ Тёмный режим",
         lightMode: "☀ Светлый режим",
         byAuthor: "Автор: "
@@ -226,96 +234,15 @@
       uk_ua: {
         title: "Книги лору Вампірізма",
         langLabel: "Мова:",
-        noTranslation: (langName) => `Переклад недоступний. Показано англійською.`,
+        noTranslation: () => `Переклад недоступний. Показано англійською.`,
         darkMode: "☾ Темний режим",
         lightMode: "☀ Світлий режим",
         byAuthor: "від: "
       }
     };
-    const LANG_NAMES = {
-      en_us: "English",
-      ru_ru: "Русский",
-      uk_ua: "Українська"
-    };
 
-    function normalizeNewlines(text) {
-      if (typeof text !== 'string') return text;
-      let result = text.trim();
-      result = result.replace(/\n{4,}/g, '\n\n\n');
-      return result;
-    }
+    const LANG_NAMES = { en_us: "English", ru_ru: "Русский", uk_ua: "Українська" };
 
-    function parseMinecraftText(raw) {
-      if (!raw || !raw.includes('§')) {
-        return document.createTextNode(raw || '');
-      }
-      const container = document.createDocumentFragment();
-      let currentStyle = {};
-      let buffer = '';
-      let i = 0;
-      const flush = () => {
-        if (buffer) {
-          const span = document.createElement('span');
-          span.textContent = buffer;
-          if (currentStyle.bold) span.style.fontWeight = 'bold';
-          if (currentStyle.italic) span.style.fontStyle = 'italic';
-          let deco = '';
-          if (currentStyle.underline) deco += ' underline';
-          if (currentStyle.strikethrough) deco += ' line-through';
-          if (deco) span.style.textDecoration = deco.trim();
-          container.appendChild(span);
-          buffer = '';
-        }
-      };
-      while (i < raw.length) {
-        if (raw[i] === '§' && i + 1 < raw.length) {
-          flush();
-          const code = raw[i + 1];
-          i += 2;
-          if (code === 'r') {
-            currentStyle = {};
-          } else if (code === 'l') {
-            currentStyle.bold = true;
-          } else if (code === 'o') {
-            currentStyle.italic = true;
-          } else if (code === 'n') {
-            currentStyle.underline = true;
-          } else if (code === 'm') {
-            currentStyle.strikethrough = true;
-          }
-        } else {
-          buffer += raw[i];
-          i++;
-        }
-      }
-      flush();
-      return container;
-    }
-
-    // The book list is hardcoded to avoid github request overload
-    const KNOWN_BOOK_IDS = [
-      "ashes_of_past_dawns",
-      "case_file_144",
-      "case_study_one",
-      "century_of_evolution",
-      "dear_martha",
-      "hunters_diary",
-      "infusion_breakthrough",
-      "mad_mans_journal",
-      "maids_diary",
-      "my_mother",
-      "my_prince",
-      "nocturnal",
-      "observation_on_vampires",
-      "pyromaniacs_diary",
-      "royal_rivalry",
-      "sinister_intentions",
-      "valorous_tale",
-      "wanted"
-    ];
-
-    const RAW_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/main/resources/assets/vampirism';
-    const AUTHOR_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/generated/resources/data/vampirism/vampirism/vampire_book';
     let allBooksData = {};
     let langTitles = {};
     let bookAuthors = {};
@@ -328,105 +255,131 @@
     themeToggle.addEventListener('click', () => {
       currentTheme = currentTheme === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', currentTheme);
-      const lang = document.getElementById('lang-select').value;
-      updateUIText(lang);
+      updateUIText(document.getElementById('lang-select').value);
       localStorage.setItem('vampire-theme', currentTheme);
     });
 
-    async function loadLanguageFiles() {
-      const langCodes = ['en_us', 'ru_ru', 'uk_ua'];
-      for (const lang of langCodes) {
-        try {
-          const url = `${RAW_BASE}/lang/${lang}.json`;
-          const response = await fetch(url);
-          if (response.ok) {
-            langTitles[lang] = await response.json();
-          }
-        } catch (e) {
-          console.warn(`Failed to load ${lang} language file`);
-        }
-      }
-    }
+    async function loadAllData() {
+      try {
+        const res = await fetch('books.json');
+        if (!res.ok) throw new Error('books.json not found');
+        const data = await res.json();
 
-    async function loadBookAuthors() {
-      for (const bookId of KNOWN_BOOK_IDS) {
-        try {
-          const url = `${AUTHOR_BASE}/${bookId}.json`;
-          const response = await fetch(url);
-          if (!response.ok) continue;
-          const data = await response.json();
-          const author = data.author;
+        langTitles = data.langTitles || {};
 
+        for (const [bookId, author] of Object.entries(data.bookAuthors || {})) {
           if (typeof author === 'string') {
             bookAuthors[bookId] = { type: 'literal', value: author };
-          } else if (author && typeof author === 'object' && author.translate) {
+          } else if (author?.translate) {
             bookAuthors[bookId] = { type: 'translate', value: author.translate };
           }
-        } catch (e) {
-          // Skip if the author file is missing or invalid
         }
+
+        for (const [bookId, langs] of Object.entries(data.books || {})) {
+          allBooksData[bookId] = {};
+          for (const [lang, bookData] of Object.entries(langs)) {
+            const normalized = { ...bookData };
+            if (Array.isArray(normalized.contents)) {
+              normalized.contents = normalized.contents.map(normalizeNewlines);
+            }
+            if (typeof normalized.credit === 'string') {
+              normalized.credit = normalizeNewlines(normalized.credit);
+            }
+            allBooksData[bookId][lang] = normalized;
+          }
+        }
+
+      } catch (e) {
+        console.warn('books.json unavailable, falling back to live fetch:', e.message);
+        await loadAllDataLive();
       }
     }
 
-    function getAuthorName(bookId, lang) {
-      const authorInfo = bookAuthors[bookId];
+    const RAW_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/main/resources/assets/vampirism';
+    const AUTHOR_BASE = 'https://raw.githubusercontent.com/TeamLapen/Vampirism/dev/projects/vampirism/src/generated/resources/data/vampirism/vampirism/vampire_book';
 
-      function resolveKey(key) {
-        if (langTitles[lang]?.[key]) return langTitles[lang][key];
-        if (langTitles.en_us?.[key]) return langTitles.en_us[key];
-        return 'unknown';
+    async function loadAllDataLive() {
+      const langs = ['en_us', 'ru_ru', 'uk_ua'];
+      for (const lang of langs) {
+        try {
+          const r = await fetch(`${RAW_BASE}/lang/${lang}.json`);
+          if (r.ok) langTitles[lang] = await r.json();
+        } catch (e) {}
       }
-
-      if (!authorInfo) {
-        return resolveKey('vampire_book.vampirism.unknown.author');
-      }
-
-      if (authorInfo.type === 'literal') {
-        return authorInfo.value;
-      }
-
-      if (authorInfo.type === 'translate') {
-        return resolveKey(authorInfo.value);
-      }
-
-      return resolveKey('vampire_book.vampirism.unknown.author');
-    }
-
-    async function loadBooks() {
-      const container = document.getElementById('books-container');
-      container.innerHTML = '';
-
       for (const bookId of KNOWN_BOOK_IDS) {
+        try {
+          const r = await fetch(`${AUTHOR_BASE}/${bookId}.json`);
+          if (r.ok) {
+            const d = await r.json();
+            const author = d.author;
+            if (typeof author === 'string') bookAuthors[bookId] = { type: 'literal', value: author };
+            else if (author?.translate) bookAuthors[bookId] = { type: 'translate', value: author.translate };
+          }
+        } catch (e) {}
         allBooksData[bookId] = {};
-        const langCodes = ['en_us', 'ru_ru', 'uk_ua'];
-        for (const lang of langCodes) {
+        for (const lang of langs) {
           try {
-            const url = `${RAW_BASE}/vampire_books/${bookId}/${lang}.json`;
-            const response = await fetch(url);
-            if (!response.ok) continue;
-            let rawData = await response.json();
-
-            const data = { ...rawData };
-            if (Array.isArray(data.contents)) {
-              data.contents = data.contents.map(page => normalizeNewlines(page));
-            }
-            if (typeof data.credit === 'string') {
-              data.credit = normalizeNewlines(data.credit);
-            }
-
-            allBooksData[bookId][lang] = data;
+            const r = await fetch(`${RAW_BASE}/vampire_books/${bookId}/${lang}.json`);
+            if (!r.ok) continue;
+            let d = await r.json();
+            if (Array.isArray(d.contents)) d.contents = d.contents.map(normalizeNewlines);
+            if (typeof d.credit === 'string') d.credit = normalizeNewlines(d.credit);
+            allBooksData[bookId][lang] = d;
           } catch (e) {}
         }
       }
+    }
 
-      renderBooks();
+    function normalizeNewlines(text) {
+      if (typeof text !== 'string') return text;
+      return text.trim().replace(/\n{4,}/g, '\n\n\n');
+    }
+
+    function parseMinecraftText(raw) {
+      if (!raw || !raw.includes('§')) return document.createTextNode(raw || '');
+      const container = document.createDocumentFragment();
+      let currentStyle = {}, buffer = '', i = 0;
+      const flush = () => {
+        if (!buffer) return;
+        const span = document.createElement('span');
+        span.textContent = buffer;
+        if (currentStyle.bold) span.style.fontWeight = 'bold';
+        if (currentStyle.italic) span.style.fontStyle = 'italic';
+        let deco = '';
+        if (currentStyle.underline) deco += ' underline';
+        if (currentStyle.strikethrough) deco += ' line-through';
+        if (deco) span.style.textDecoration = deco.trim();
+        container.appendChild(span);
+        buffer = '';
+      };
+      while (i < raw.length) {
+        if (raw[i] === '§' && i + 1 < raw.length) {
+          flush();
+          const code = raw[i + 1]; i += 2;
+          if (code === 'r') currentStyle = {};
+          else if (code === 'l') currentStyle.bold = true;
+          else if (code === 'o') currentStyle.italic = true;
+          else if (code === 'n') currentStyle.underline = true;
+          else if (code === 'm') currentStyle.strikethrough = true;
+        } else { buffer += raw[i]; i++; }
+      }
+      flush();
+      return container;
     }
 
     function getBookTitle(bookId, lang) {
       const key = `vampire_book.vampirism.${bookId}`;
-      if (langTitles[lang]?.[key]) return langTitles[lang][key];
-      if (langTitles.en_us?.[key]) return langTitles.en_us[key];
-      return bookId.replace(/_/g, ' ');
+      return langTitles[lang]?.[key] || langTitles.en_us?.[key] || bookId.replace(/_/g, ' ');
+    }
+
+    function getAuthorName(bookId, lang) {
+      const authorInfo = bookAuthors[bookId];
+      const resolve = key =>
+        langTitles[lang]?.[key] || langTitles.en_us?.[key] || 'Unknown';
+      if (!authorInfo) return resolve('vampire_book.vampirism.unknown.author');
+      if (authorInfo.type === 'literal') return authorInfo.value;
+      if (authorInfo.type === 'translate') return resolve(authorInfo.value);
+      return resolve('vampire_book.vampirism.unknown.author');
     }
 
     function updateUIText(lang) {
@@ -439,37 +392,26 @@
     function renderBooks() {
       const container = document.getElementById('books-container');
       container.innerHTML = '';
-
-      const bookIds = KNOWN_BOOK_IDS;
-      bookIds.forEach(id => {
+      KNOWN_BOOK_IDS.forEach(id => {
         const div = document.createElement('div');
         div.className = 'book-container';
         div.dataset.bookId = id;
 
         const titleContainer = document.createElement('div');
-        titleContainer.style.padding = '14px 18px';
-        titleContainer.style.cursor = 'pointer';
-        titleContainer.style.borderBottom = '1px solid var(--border)';
+        titleContainer.style.cssText = 'padding:14px 18px;cursor:pointer;border-bottom:1px solid var(--border)';
 
         const titleDiv = document.createElement('div');
         titleDiv.className = 'book-title';
-        titleDiv.style.display = 'flex';
-        titleDiv.style.justifyContent = 'space-between';
-        titleDiv.style.alignItems = 'center';
-        titleDiv.style.fontWeight = '600';
-        titleDiv.style.fontSize = '1.25em';
-        titleDiv.style.marginBottom = '4px';
+        titleDiv.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:1.25em;margin-bottom:4px';
         titleDiv.textContent = getBookTitle(id, 'en_us');
 
         const authorDiv = document.createElement('div');
         authorDiv.className = 'book-author';
         const authorName = getAuthorName(id, 'en_us');
-        const ui = UI_TEXT.en_us;
-        authorDiv.textContent = authorName ? ui.byAuthor + authorName : '';
+        authorDiv.textContent = authorName ? UI_TEXT.en_us.byAuthor + authorName : '';
 
         titleContainer.appendChild(titleDiv);
         titleContainer.appendChild(authorDiv);
-
         titleContainer.addEventListener('click', () => {
           titleDiv.classList.toggle('collapsed');
           contentDiv.classList.toggle('expanded');
@@ -494,6 +436,7 @@
         const bookId = container.dataset.bookId;
         const titleDiv = container.querySelector('.book-title');
         const authorDiv = container.querySelector('.book-author');
+
         titleDiv.textContent = getBookTitle(bookId, lang);
         if (authorDiv) {
           const authorName = getAuthorName(bookId, lang);
@@ -507,8 +450,8 @@
         const book = allBooksData[bookId];
         if (!book) return;
 
-        let dataToShow = book[lang] || book.en_us;
-        let note = !book[lang] && book.en_us ? UI_TEXT[lang]?.noTranslation(LANG_NAMES[lang]) : '';
+        const dataToShow = book[lang] || book.en_us;
+        const note = !book[lang] && book.en_us ? (UI_TEXT[lang]?.noTranslation(LANG_NAMES[lang]) || '') : '';
 
         if (!dataToShow) {
           contentDiv.innerHTML = '<div class="error">No content.</div>';
@@ -523,14 +466,12 @@
         }
 
         if (Array.isArray(dataToShow.contents)) {
-          const pages = dataToShow.contents;
-          pages.forEach((text, index) => {
+          dataToShow.contents.forEach((text, index) => {
             const pageDiv = document.createElement('div');
             pageDiv.className = 'page';
             pageDiv.appendChild(parseMinecraftText(text));
             contentDiv.appendChild(pageDiv);
-
-            if (index < pages.length - 1) {
+            if (index < dataToShow.contents.length - 1) {
               const divider = document.createElement('div');
               divider.className = 'page-divider';
               contentDiv.appendChild(divider);
@@ -548,24 +489,22 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      await loadLanguageFiles();
-      await loadBookAuthors();
-      await loadBooks();
-      document.getElementById('lang-select').addEventListener('change', () => {
-        updateBookContents();
-      });
+      await loadAllData();
+      renderBooks();
+      document.getElementById('lang-select').addEventListener('change', updateBookContents);
     });
   </script>
 
   <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BookSeries",
-      "name": "Vampirism Mod Lore Books",
-      "description": "The complete collection of lore and stories from the Vampirism Minecraft mod.",
-      "genre": "Fantasy/Gaming",
-      "url": "https://thegridexpert.github.io/vampirism-books"
-    }
+  {
+    "@context": "https://schema.org",
+    "@type": "BookSeries",
+    "name": "Vampirism Mod Lore Books",
+    "description": "The complete collection of lore and stories from the Vampirism Minecraft mod.",
+    "genre": "Fantasy/Gaming",
+    "url": "https://thegridexpert.github.io/vampirism-books",
+    "sameAs": "https://thegridexpert.github.io/vampirism-books/books-full.html"
+  }
   </script>
 </body>
 </html>
