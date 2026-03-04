@@ -20,13 +20,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Fetch and build books.json + books-full.html
+      - name: Fetch and build all output files
         run: node scripts/fetch-books.js
 
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/books.json public/books-full.html
+          git add public/books.json public/books-full.html public/index.html
           git diff --cached --quiet || git commit -m "chore: update books data [skip ci]"
           git push
+          
