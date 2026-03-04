@@ -1,0 +1,5 @@
+mkdir public
+touch public/.gitkeep
+git add public/.gitkeep
+git commit -m "chore: create public output directory"
+git push
