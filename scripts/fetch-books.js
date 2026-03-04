@@ -393,11 +393,6 @@ function buildFullHtml({ bookIds, langTitles, bookAuthors, books }, generatedAt)
   const data = await fetchAll();
 
   const outDir = path.join(__dirname, '..');
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const json = { generatedAt, langTitles: data.langTitles, bookAuthors: data.bookAuthors, books: data.books };
-  fs.writeFileSync(path.join(outDir, 'books.json'), JSON.stringify(json, null, 2));
-  console.log('Written: public/books.json');
 
   fs.writeFileSync(path.join(outDir, 'books-full.html'), buildFullHtml(data, generatedAt));
   console.log('Written: public/books-full.html');
