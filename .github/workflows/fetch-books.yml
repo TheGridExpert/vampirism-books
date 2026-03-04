@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p public
           git add public/books.json public/books-full.html public/index.html
           git diff --cached --quiet || git commit -m "chore: update books data [skip ci]"
           git push
-          
