@@ -392,7 +392,7 @@ function buildFullHtml({ bookIds, langTitles, bookAuthors, books }, generatedAt)
   const generatedAt = new Date().toISOString();
   const data = await fetchAll();
 
-  const outDir = path.join(__dirname, 'public');
+  const outDir = path.join(__dirname, '..');
   fs.mkdirSync(outDir, { recursive: true });
 
   const json = { generatedAt, langTitles: data.langTitles, bookAuthors: data.bookAuthors, books: data.books };
